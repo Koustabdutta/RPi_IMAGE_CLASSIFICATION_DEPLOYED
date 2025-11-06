@@ -1,7 +1,4 @@
-"""
-Raspberry Pi Image Classifier GUI
-User-friendly interface for image classification on Raspberry Pi 3B
-"""
+
 
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -10,7 +7,6 @@ import numpy as np
 import time
 import os
 
-# Try to import TFLite runtime (lightweight) or fall back to TensorFlow
 try:
     import tflite_runtime.interpreter as tflite
     print("Using TFLite Runtime")
@@ -26,28 +22,23 @@ class ImageClassifierGUI:
         self.root.geometry("800x600")
         self.root.configure(bg='#2c3e50')
         
-        # Model parameters
         self.model_path = 'image_classifier_quantized.tflite'
         self.class_names_path = 'class_names.txt'
         self.img_size = 32
         
-        # State variables
         self.interpreter = None
         self.class_names = []
         self.current_image = None
         self.current_image_path = None
         
-        # Setup UI
         self.setup_ui()
         
-        # Load model and class names
         self.load_model()
         self.load_class_names()
     
     def setup_ui(self):
         """Setup the user interface"""
         
-        # Title
         title_label = tk.Label(
             self.root,
             text="🎯 Image Classification System",
@@ -57,7 +48,6 @@ class ImageClassifierGUI:
         )
         title_label.pack(pady=20)
         
-        # Status label
         self.status_label = tk.Label(
             self.root,
             text="Ready to classify images",
@@ -67,11 +57,9 @@ class ImageClassifierGUI:
         )
         self.status_label.pack()
         
-        # Main container
         main_frame = tk.Frame(self.root, bg='#2c3e50')
         main_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
         
-        # Left panel - Image display
         left_panel = tk.Frame(main_frame, bg='#34495e', relief=tk.RAISED, borderwidth=2)
         left_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
         
@@ -83,11 +71,9 @@ class ImageClassifierGUI:
             fg='#ecf0f1'
         ).pack(pady=10)
         
-        # Image canvas
         self.image_label = tk.Label(left_panel, bg='#34495e')
         self.image_label.pack(pady=20, padx=20)
         
-        # Right panel - Results
         right_panel = tk.Frame(main_frame, bg='#34495e', relief=tk.RAISED, borderwidth=2)
         right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
@@ -99,7 +85,6 @@ class ImageClassifierGUI:
             fg='#ecf0f1'
         ).pack(pady=10)
         
-        # Results text area
         self.results_text = tk.Text(
             right_panel,
             font=('Courier', 11),
@@ -113,11 +98,9 @@ class ImageClassifierGUI:
         )
         self.results_text.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
         
-        # Button frame
         button_frame = tk.Frame(self.root, bg='#2c3e50')
         button_frame.pack(pady=20)
         
-        # Buttons
         btn_style = {
             'font': ('Arial', 11, 'bold'),
             'bg': '#3498db',
@@ -148,7 +131,6 @@ class ImageClassifierGUI:
         )
         self.classify_btn.pack(side=tk.LEFT, padx=5)
         
-        # Try to add camera button if picamera is available
         try:
             import picamera
             self.camera_btn = tk.Button(
@@ -215,7 +197,6 @@ class ImageClassifierGUI:
             self.class_names = [f"Class {i}" for i in range(10)]
     
     def load_image(self):
-        """Load image from file"""
         file_path = filedialog.askopenfilename(
             title="Select an image",
             filetypes=[
@@ -226,12 +207,10 @@ class ImageClassifierGUI:
         
         if file_path:
             try:
-                # Load and display image
                 self.current_image_path = file_path
                 image = Image.open(file_path)
                 self.current_image = image.copy()
                 
-                # Display image
                 display_image = image.copy()
                 display_image.thumbnail((300, 300), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(display_image)
@@ -239,7 +218,6 @@ class ImageClassifierGUI:
                 self.image_label.configure(image=photo)
                 self.image_label.image = photo
                 
-                # Enable classify button
                 self.classify_btn.configure(state=tk.NORMAL)
                 
                 self.update_status(f"✓ Image loaded: {os.path.basename(file_path)}")
@@ -255,22 +233,18 @@ class ImageClassifierGUI:
             
             self.update_status("📷 Capturing photo...")
             
-            # Initialize camera
             camera = PiCamera()
             camera.resolution = (640, 480)
-            time.sleep(2)  # Camera warm-up
+            time.sleep(2)  
             
-            # Capture to memory
             stream = io.BytesIO()
             camera.capture(stream, format='jpeg')
             camera.close()
             
-            # Load image
             stream.seek(0)
             image = Image.open(stream)
             self.current_image = image.copy()
             
-            # Display image
             display_image = image.copy()
             display_image.thumbnail((300, 300), Image.Resampling.LANCZOS)
             photo = ImageTk.PhotoImage(display_image)
@@ -278,7 +252,6 @@ class ImageClassifierGUI:
             self.image_label.configure(image=photo)
             self.image_label.image = photo
             
-            # Enable classify button
             self.classify_btn.configure(state=tk.NORMAL)
             
             self.update_status("✓ Photo captured successfully!")
@@ -288,20 +261,15 @@ class ImageClassifierGUI:
     
     def preprocess_image(self, image):
         """Preprocess image for model input"""
-        # Resize to model input size
         image = image.resize((self.img_size, self.img_size), Image.Resampling.LANCZOS)
         
-        # Convert to RGB if needed
         if image.mode != 'RGB':
             image = image.convert('RGB')
         
-        # Convert to numpy array
         img_array = np.array(image)
         
-        # Add batch dimension
         img_array = np.expand_dims(img_array, axis=0)
         
-        # Convert to uint8 (for quantized model)
         img_array = img_array.astype(np.uint8)
         
         return img_array
@@ -319,10 +287,8 @@ class ImageClassifierGUI:
         try:
             self.update_status("🔍 Classifying image...")
             
-            # Preprocess image
             input_data = self.preprocess_image(self.current_image)
             
-            # Run inference
             start_time = time.time()
             
             self.interpreter.set_tensor(self.input_details[0]['index'], input_data)
@@ -331,17 +297,13 @@ class ImageClassifierGUI:
             
             inference_time = (time.time() - start_time) * 1000  # Convert to ms
             
-            # Get predictions
             predictions = output[0]
             
-            # Handle uint8 output (scale back to 0-1 range)
             if predictions.dtype == np.uint8:
                 predictions = predictions.astype(np.float32) / 255.0
             
-            # Get top 3 predictions
             top_indices = np.argsort(predictions)[-3:][::-1]
             
-            # Display results
             self.display_results(predictions, top_indices, inference_time)
             
             self.update_status(f"✓ Classification complete ({inference_time:.1f}ms)")
@@ -354,12 +316,10 @@ class ImageClassifierGUI:
         """Display classification results"""
         self.results_text.delete(1.0, tk.END)
         
-        # Header
         self.results_text.insert(tk.END, "=" * 40 + "\n")
         self.results_text.insert(tk.END, "  CLASSIFICATION RESULTS\n")
         self.results_text.insert(tk.END, "=" * 40 + "\n\n")
         
-        # Top predictions
         self.results_text.insert(tk.END, "Top 3 Predictions:\n\n")
         
         for i, idx in enumerate(top_indices, 1):
@@ -369,12 +329,10 @@ class ImageClassifierGUI:
             self.results_text.insert(tk.END, f"{i}. {class_name}\n")
             self.results_text.insert(tk.END, f"   Confidence: {confidence:.2f}%\n")
             
-            # Draw confidence bar
             bar_length = int(confidence / 3)
             bar = "█" * bar_length + "░" * (33 - bar_length)
             self.results_text.insert(tk.END, f"   [{bar}]\n\n")
         
-        # Performance info
         self.results_text.insert(tk.END, "=" * 40 + "\n")
         self.results_text.insert(tk.END, f"Inference Time: {inference_time:.1f} ms\n")
         self.results_text.insert(tk.END, f"FPS: {1000/inference_time:.1f}\n")
